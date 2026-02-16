@@ -508,7 +508,13 @@ class FatMexInpaintSampler:
         latent_dict = {"samples": latent}
 
         # Apply mask to layered latent: [1, 1, layers+1, H//8, W//8]
-        mask_4d = mask.unsqueeze(0).unsqueeze(0).to(self.device)
+        # FatMexHeadMask can return [B, H, W] (multiple masks); combine to single [1, H, W]
+        if mask.dim() == 3:
+            mask = mask.max(dim=0, keepdim=True)[0]
+        # Ensure [1, 1, H, W] for interpolate (N, C, H, W)
+        while mask.dim() < 4:
+            mask = mask.unsqueeze(0)
+        mask_4d = mask.to(self.device)
         mask_resized = torch.nn.functional.interpolate(
             mask_4d,
             size=(h // 8, w // 8),
