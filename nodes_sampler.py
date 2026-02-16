@@ -497,12 +497,25 @@ class FatMexInpaintSampler:
             clip, vae, prompt, negative_prompt, [image1, image2]
         )
 
-        # VAE encode the target image
-        encoded = vae.encode(target_image[:, :, :, :3])
-        latent_dict = {"samples": encoded}
+        # Qwen Edit inpainting needs 16-channel layered latents (like ImageEditSampler),
+        # not standard 4-channel VAE latents.
+        _, h, w, _ = target_image.shape
+        layers = 1  # 2 layers total for inpaint (layers+1)
+        latent = torch.zeros(
+            [1, 16, layers + 1, h // 8, w // 8],
+            device=self.device
+        )
+        latent_dict = {"samples": latent}
 
-        # Apply mask to latent (SetLatentNoiseMask)
-        latent_dict["noise_mask"] = mask.reshape((-1, 1, mask.shape[-2], mask.shape[-1]))
+        # Apply mask to layered latent: [1, 1, layers+1, H//8, W//8]
+        mask_4d = mask.unsqueeze(0).unsqueeze(0).to(self.device)
+        mask_resized = torch.nn.functional.interpolate(
+            mask_4d,
+            size=(h // 8, w // 8),
+            mode='nearest'
+        )
+        mask_layered = mask_resized.repeat(1, 1, layers + 1, 1, 1)
+        latent_dict["noise_mask"] = mask_layered
 
         # Sample (inpaint within masked area)
         sampled = _common_sample(
