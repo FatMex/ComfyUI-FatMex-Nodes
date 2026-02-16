@@ -1,0 +1,105 @@
+{
+  "last_node_id": 5,
+  "last_link_id": 7,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "FatMexModelLoader",
+      "pos": [100, 200],
+      "size": [350, 250],
+      "properties": {},
+      "widgets_values": ["Klein 9B", true, "None", 1.0, "None", 1.0, "auto"],
+      "outputs": [
+        {"name": "model", "type": "MODEL", "links": [1], "slot_index": 0},
+        {"name": "clip", "type": "CLIP", "links": [2], "slot_index": 1},
+        {"name": "vae", "type": "VAE", "links": [3], "slot_index": 2}
+      ]
+    },
+    {
+      "id": 2,
+      "type": "FatMexContentSampler",
+      "pos": [550, 200],
+      "size": [400, 400],
+      "properties": {},
+      "widgets_values": [
+        "a woman in casual wear sitting at a trendy cafe, instagram photo, natural lighting, aesthetic",
+        "",
+        "768x1344 (Portrait 9:16)",
+        0,
+        "auto", 0, 0.0, "auto", "auto", 0, 0, 1, 1.0
+      ],
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 1},
+        {"name": "clip", "type": "CLIP", "link": 2},
+        {"name": "vae", "type": "VAE", "link": 3}
+      ],
+      "outputs": [
+        {"name": "images", "type": "IMAGE", "links": [4], "slot_index": 0},
+        {"name": "latent", "type": "LATENT", "links": [], "slot_index": 1}
+      ]
+    },
+    {
+      "id": 3,
+      "type": "LoadImage",
+      "pos": [550, 650],
+      "size": [300, 300],
+      "properties": {},
+      "widgets_values": ["face_reference.png", "image"],
+      "outputs": [
+        {"name": "IMAGE", "type": "IMAGE", "links": [5], "slot_index": 0},
+        {"name": "MASK", "type": "MASK", "links": [], "slot_index": 1}
+      ]
+    },
+    {
+      "id": 4,
+      "type": "FatMexFaceSwap",
+      "pos": [1050, 300],
+      "size": [350, 200],
+      "properties": {},
+      "widgets_values": [0, 1.0],
+      "inputs": [
+        {"name": "target_image", "type": "IMAGE", "link": 4},
+        {"name": "face_reference", "type": "IMAGE", "link": 5}
+      ],
+      "outputs": [
+        {"name": "swapped_image", "type": "IMAGE", "links": [6], "slot_index": 0}
+      ]
+    },
+    {
+      "id": 5,
+      "type": "PreviewImage",
+      "pos": [1500, 300],
+      "size": [400, 400],
+      "properties": {},
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 6}
+      ]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "MODEL"],
+    [2, 1, 1, 2, 1, "CLIP"],
+    [3, 1, 2, 2, 2, "VAE"],
+    [4, 2, 0, 4, 0, "IMAGE"],
+    [5, 3, 0, 4, 1, "IMAGE"],
+    [6, 4, 0, 5, 0, "IMAGE"]
+  ],
+  "groups": [
+    {
+      "title": "Fat Mex Quick Faceswap (FREE)",
+      "bounding": [50, 100, 1900, 900],
+      "color": "#2a363b"
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {"scale": 0.7, "offset": [0, 0]},
+    "info": {
+      "name": "Fat Mex Quick Faceswap",
+      "description": "Generate an image and swap your face onto it in 4 nodes. Load a face reference, type a prompt, generate.",
+      "version": "1.0",
+      "author": "Fat Mex",
+      "tier": "free"
+    }
+  }
+}

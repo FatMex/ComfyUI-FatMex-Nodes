@@ -1,0 +1,182 @@
+{
+  "last_node_id": 12,
+  "last_link_id": 20,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "FatMexModelLoader",
+      "pos": [100, 200],
+      "size": [350, 250],
+      "properties": {"title": "Model A - Klein 9B"},
+      "widgets_values": ["Klein 9B", true, "None", 1.0, "None", 1.0, "auto"],
+      "outputs": [
+        {"name": "model", "type": "MODEL", "links": [1], "slot_index": 0},
+        {"name": "clip", "type": "CLIP", "links": [2], "slot_index": 1},
+        {"name": "vae", "type": "VAE", "links": [3], "slot_index": 2}
+      ]
+    },
+    {
+      "id": 2,
+      "type": "FatMexModelLoader",
+      "pos": [100, 600],
+      "size": [350, 250],
+      "properties": {"title": "Model B - Z-Image Turbo"},
+      "widgets_values": ["Z-Image Turbo", true, "None", 1.0, "None", 1.0, "auto"],
+      "outputs": [
+        {"name": "model", "type": "MODEL", "links": [10], "slot_index": 0},
+        {"name": "clip", "type": "CLIP", "links": [11], "slot_index": 1},
+        {"name": "vae", "type": "VAE", "links": [12], "slot_index": 2}
+      ]
+    },
+    {
+      "id": 3,
+      "type": "FatMexPromptTemplate",
+      "pos": [100, 1000],
+      "size": [350, 200],
+      "properties": {},
+      "widgets_values": ["woman in athletic wear doing yoga at sunrise on a mountain", "Lifestyle Candid", true],
+      "outputs": [
+        {"name": "prompt", "type": "STRING", "links": [13, 14], "slot_index": 0}
+      ]
+    },
+    {
+      "id": 4,
+      "type": "FatMexContentSampler",
+      "pos": [600, 200],
+      "size": [400, 400],
+      "properties": {"title": "Generate with Klein"},
+      "widgets_values": [
+        "",
+        "",
+        "768x1344 (Portrait 9:16)",
+        42,
+        "Klein 9B", 0, 0.0, "auto", "auto", 0, 0, 1, 1.0
+      ],
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 1},
+        {"name": "clip", "type": "CLIP", "link": 2},
+        {"name": "vae", "type": "VAE", "link": 3},
+        {"name": "positive_prompt", "type": "STRING", "link": 13}
+      ],
+      "outputs": [
+        {"name": "images", "type": "IMAGE", "links": [4], "slot_index": 0},
+        {"name": "latent", "type": "LATENT", "links": [], "slot_index": 1}
+      ]
+    },
+    {
+      "id": 5,
+      "type": "FatMexContentSampler",
+      "pos": [600, 650],
+      "size": [400, 400],
+      "properties": {"title": "Generate with Z-Image"},
+      "widgets_values": [
+        "",
+        "",
+        "768x1344 (Portrait 9:16)",
+        42,
+        "Z-Image Turbo", 0, 0.0, "auto", "auto", 0, 0, 1, 1.0
+      ],
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 10},
+        {"name": "clip", "type": "CLIP", "link": 11},
+        {"name": "vae", "type": "VAE", "link": 12},
+        {"name": "positive_prompt", "type": "STRING", "link": 14}
+      ],
+      "outputs": [
+        {"name": "images", "type": "IMAGE", "links": [15], "slot_index": 0},
+        {"name": "latent", "type": "LATENT", "links": [], "slot_index": 1}
+      ]
+    },
+    {
+      "id": 6,
+      "type": "FatMexImageCompare",
+      "pos": [1100, 400],
+      "size": [350, 150],
+      "properties": {},
+      "widgets_values": ["Klein 9B", "Z-Image Turbo", 8],
+      "inputs": [
+        {"name": "image_a", "type": "IMAGE", "link": 4},
+        {"name": "image_b", "type": "IMAGE", "link": 15}
+      ],
+      "outputs": [
+        {"name": "comparison", "type": "IMAGE", "links": [16], "slot_index": 0}
+      ]
+    },
+    {
+      "id": 7,
+      "type": "PreviewImage",
+      "pos": [1550, 200],
+      "size": [450, 350],
+      "properties": {"title": "Klein Result"},
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 4}
+      ]
+    },
+    {
+      "id": 8,
+      "type": "PreviewImage",
+      "pos": [1550, 600],
+      "size": [450, 350],
+      "properties": {"title": "Z-Image Result"},
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 15}
+      ]
+    },
+    {
+      "id": 9,
+      "type": "PreviewImage",
+      "pos": [1100, 600],
+      "size": [400, 300],
+      "properties": {"title": "Side-by-Side Comparison"},
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 16}
+      ]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 4, 0, "MODEL"],
+    [2, 1, 1, 4, 1, "CLIP"],
+    [3, 1, 2, 4, 2, "VAE"],
+    [4, 4, 0, 7, 0, "IMAGE"],
+    [10, 2, 0, 5, 0, "MODEL"],
+    [11, 2, 1, 5, 1, "CLIP"],
+    [12, 2, 2, 5, 2, "VAE"],
+    [13, 3, 0, 4, 3, "STRING"],
+    [14, 3, 0, 5, 3, "STRING"],
+    [15, 5, 0, 8, 0, "IMAGE"],
+    [16, 6, 0, 9, 0, "IMAGE"]
+  ],
+  "groups": [
+    {
+      "title": "Model A - Flux 2 Klein 9B",
+      "bounding": [50, 100, 1000, 450],
+      "color": "#3d5a80"
+    },
+    {
+      "title": "Model B - Z-Image Turbo",
+      "bounding": [50, 520, 1000, 450],
+      "color": "#ee6c4d"
+    },
+    {
+      "title": "Shared Prompt",
+      "bounding": [50, 940, 450, 300],
+      "color": "#293241"
+    },
+    {
+      "title": "Compare Results",
+      "bounding": [1050, 100, 1000, 850],
+      "color": "#98c1d9"
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {"scale": 0.5, "offset": [0, 0]},
+    "info": {
+      "name": "Fat Mex Multi-Model Studio",
+      "description": "Compare outputs from different models side-by-side using the same prompt. Use the Prompt Template to generate optimized prompts, then see how Klein vs Z-Image render them.",
+      "version": "1.0",
+      "author": "Fat Mex",
+      "tier": "pro"
+    }
+  }
+}

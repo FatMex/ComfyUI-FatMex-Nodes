@@ -1,0 +1,76 @@
+{
+  "last_node_id": 4,
+  "last_link_id": 4,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "FatMexModelLoader",
+      "pos": [100, 200],
+      "size": [350, 250],
+      "properties": {},
+      "widgets_values": ["Z-Image Turbo", true, "None", 1.0, "None", 1.0, "auto"],
+      "outputs": [
+        {"name": "model", "type": "MODEL", "links": [1], "slot_index": 0},
+        {"name": "clip", "type": "CLIP", "links": [2], "slot_index": 1},
+        {"name": "vae", "type": "VAE", "links": [3], "slot_index": 2}
+      ]
+    },
+    {
+      "id": 2,
+      "type": "FatMexContentSampler",
+      "pos": [550, 200],
+      "size": [400, 400],
+      "properties": {},
+      "widgets_values": [
+        "a stunning woman in a black evening gown at a luxury hotel lobby, cinematic lighting, fashion editorial, high quality",
+        "",
+        "832x1216 (Portrait 2:3)",
+        0,
+        "Z-Image Turbo", 0, 0.0, "auto", "auto", 0, 0, 1, 1.0
+      ],
+      "inputs": [
+        {"name": "model", "type": "MODEL", "link": 1},
+        {"name": "clip", "type": "CLIP", "link": 2},
+        {"name": "vae", "type": "VAE", "link": 3}
+      ],
+      "outputs": [
+        {"name": "images", "type": "IMAGE", "links": [4], "slot_index": 0},
+        {"name": "latent", "type": "LATENT", "links": [], "slot_index": 1}
+      ]
+    },
+    {
+      "id": 3,
+      "type": "PreviewImage",
+      "pos": [1050, 200],
+      "size": [400, 400],
+      "properties": {},
+      "inputs": [
+        {"name": "images", "type": "IMAGE", "link": 4}
+      ]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "MODEL"],
+    [2, 1, 1, 2, 1, "CLIP"],
+    [3, 1, 2, 2, 2, "VAE"],
+    [4, 2, 0, 3, 0, "IMAGE"]
+  ],
+  "groups": [
+    {
+      "title": "Fat Mex Z-Image Generator (FREE)",
+      "bounding": [50, 100, 1450, 550],
+      "color": "#2a363b"
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {"scale": 0.8, "offset": [0, 0]},
+    "info": {
+      "name": "Fat Mex Z-Image Generator",
+      "description": "Fast image generation with Z-Image Turbo. Great for quick iterations and content creation.",
+      "version": "1.0",
+      "author": "Fat Mex",
+      "tier": "free"
+    }
+  }
+}
