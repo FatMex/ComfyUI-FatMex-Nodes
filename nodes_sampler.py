@@ -50,10 +50,38 @@ def _vae_decode(vae, sampled):
     return images
 
 
-def _qwen_edit_encode(clip, vae, prompt, negative_prompt, images):
+def _scale_image_to_total_pixels(samples_bchw, total_pixels, multiple_of=16):
+    """
+    Scale image tensor [B,C,H,W] to target total pixel count with dimensions
+    divisible by `multiple_of`. Uses area interpolation (best for downscaling).
+    Matches ComfyUi-Scale-Image-to-Total-Pixels-Advanced behaviour.
+    """
+    h, w = samples_bchw.shape[2], samples_bchw.shape[3]
+    current_pixels = h * w
+    if current_pixels == 0:
+        return samples_bchw
+    scale = math.sqrt(total_pixels / current_pixels)
+    new_w = max(multiple_of, round(w * scale / multiple_of) * multiple_of)
+    new_h = max(multiple_of, round(h * scale / multiple_of) * multiple_of)
+    if new_w == w and new_h == h:
+        return samples_bchw
+    return comfy.utils.common_upscale(samples_bchw, new_w, new_h, "area", "disabled")
+
+
+def _qwen_edit_encode(clip, vae, prompt, negative_prompt, images,
+                       ref_latent_mask=None, use_zero_out_negative=False):
     """
     Encode prompt with Qwen Image Edit Plus style conditioning.
     Replicates TextEncodeQwenImageEditPlus logic internally.
+
+    Args:
+        ref_latent_mask: optional list of bools, same length as images.
+            True = include this image as a reference latent (identity conditioning).
+            False = VL-only (visual context, no latent conditioning).
+            None = all images get reference latents (original behaviour).
+        use_zero_out_negative: if True, use ConditioningZeroOut of the positive
+            as negative conditioning instead of encoding negative_prompt text.
+            This dramatically improves Qwen 2509 quality per community research.
     """
     ref_latents = []
     images_vl = []
@@ -71,7 +99,7 @@ def _qwen_edit_encode(clip, vae, prompt, negative_prompt, images):
         if image is not None:
             samples = image.movedim(-1, 1)
 
-            # VL resize (384x384 target)
+            # VL resize (384x384 target) — always included so the LLM sees the image
             total_vl = int(384 * 384)
             scale_vl = math.sqrt(total_vl / (samples.shape[3] * samples.shape[2]))
             w_vl = round(samples.shape[3] * scale_vl)
@@ -79,13 +107,10 @@ def _qwen_edit_encode(clip, vae, prompt, negative_prompt, images):
             s_vl = comfy.utils.common_upscale(samples, w_vl, h_vl, "area", "disabled")
             images_vl.append(s_vl.movedim(1, -1))
 
-            # Ref latent resize (1024x1024 target)
-            if vae is not None:
-                total_ref = int(1024 * 1024)
-                scale_ref = math.sqrt(total_ref / (samples.shape[3] * samples.shape[2]))
-                w_ref = round(samples.shape[3] * scale_ref / 8.0) * 8
-                h_ref = round(samples.shape[2] * scale_ref / 8.0) * 8
-                s_ref = comfy.utils.common_upscale(samples, w_ref, h_ref, "area", "disabled")
+            # Ref latent: scale to ~1mpx with dims divisible by 16
+            include_latent = ref_latent_mask[i] if ref_latent_mask is not None else True
+            if vae is not None and include_latent:
+                s_ref = _scale_image_to_total_pixels(samples, total_pixels=1024 * 1024, multiple_of=16)
                 ref_latents.append(vae.encode(s_ref.movedim(1, -1)[:, :, :, :3]))
 
             image_prompt += "Picture {}: <|vision_start|><|image_pad|><|vision_end|>".format(i + 1)
@@ -97,8 +122,23 @@ def _qwen_edit_encode(clip, vae, prompt, negative_prompt, images):
             positive, {"reference_latents": ref_latents}, append=True
         )
 
-    neg_tokens = clip.tokenize(negative_prompt)
-    negative = clip.encode_from_tokens_scheduled(neg_tokens)
+    if use_zero_out_negative:
+        # ConditioningZeroOut: zero the positive conditioning tensors.
+        # Forces the model to use the high-quality reference latent instead
+        # of low-quality internal image copies. Critical for Qwen 2509 quality.
+        negative = []
+        for t in positive:
+            d = t[1].copy()
+            pooled_output = d.get("pooled_output", None)
+            if pooled_output is not None:
+                d["pooled_output"] = torch.zeros_like(pooled_output)
+            conditioning_lyrics = d.get("conditioning_lyrics", None)
+            if conditioning_lyrics is not None:
+                d["conditioning_lyrics"] = torch.zeros_like(conditioning_lyrics)
+            negative.append([torch.zeros_like(t[0]), d])
+    else:
+        neg_tokens = clip.tokenize(negative_prompt)
+        negative = clip.encode_from_tokens_scheduled(neg_tokens)
 
     return positive, negative
 
@@ -427,6 +467,8 @@ class FatMexImageEditSampler:
         logger.info("[ImageEditSampler] Sampling complete")
 
         images = _vae_decode(vae, sampled)
+        # Only keep the last image — earlier ones are intermediate layer reconstructions
+        images = images[-1:]
         return (images, sampled)
 
 
@@ -462,6 +504,8 @@ class FatMexInpaintSampler:
             "optional": {
                 "image1": ("IMAGE", {"tooltip": "Reference image 1 (e.g. the face to swap in)."}),
                 "image2": ("IMAGE", {"tooltip": "Reference image 2 (optional \u2014 e.g. the target body for context)."}),
+                "grow_mask_by": ("INT", {"default": 6, "min": 0, "max": 64, "step": 1,
+                                          "tooltip": "Expand mask edges for seamless inpainting (matches VAEEncodeForInpaint)."}),
                 "preset_hint": (["auto"] + PRESET_NAMES, {"default": "auto"}),
                 "steps": ("INT", {"default": 8, "min": 1, "max": 100, "tooltip": "Inpaint steps."}),
                 "cfg": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 100.0, "step": 0.1}),
@@ -483,7 +527,7 @@ class FatMexInpaintSampler:
     )
 
     def generate(self, model, clip, vae, target_image, mask, prompt, negative_prompt, seed,
-                 image1=None, image2=None,
+                 image1=None, image2=None, grow_mask_by=6,
                  preset_hint="auto", steps=8, cfg=0.0,
                  sampler_name="auto", scheduler="auto", denoise=1.0):
 
@@ -491,48 +535,62 @@ class FatMexInpaintSampler:
         actual_steps, actual_cfg, actual_sampler, actual_scheduler = _resolve_sampling_params(
             preset_config, steps, cfg, sampler_name, scheduler
         )
+        logger.info(f"[InpaintSampler] steps={actual_steps} cfg={actual_cfg} "
+                     f"sampler={actual_sampler} scheduler={actual_scheduler}")
 
-        # Qwen Edit encoding with image references
+        # === Matches the video workflow exactly ===
+        # TextEncodeQwenImageEditPlus receives:
+        #   image1 = body (clean, no mask overlay)
+        #   image2 = face reference
+        # KSampler receives:
+        #   Empty Latent at body's exact dimensions
+        #   No noise_mask — pure Qwen Edit generation
+        # SAM3 mask is used ONLY for post-compositing.
+
+        body = target_image[:, :, :, :3]
+        _, h_orig, w_orig, _ = target_image.shape
+
+        # Qwen Edit encoding: body as Picture 1, face as Picture 2.
+        # Body = VL-only (pose/scene context, no ref latent competing with face).
+        # Face = VL + reference latent (STRONG identity: hair color, skin, features).
+        # This prevents the body's dark hair / skin tone from diluting the
+        # face reference's blonde hair / lighter skin in the latent space.
         positive, negative = _qwen_edit_encode(
-            clip, vae, prompt, negative_prompt, [image1, image2]
+            clip, vae, prompt, negative_prompt,
+            [body, image1],
+            ref_latent_mask=[False, True],
+            use_zero_out_negative=True
         )
 
-        # Qwen Edit inpainting needs 16-channel layered latents (like ImageEditSampler),
-        # not standard 4-channel VAE latents.
-        _, h, w, _ = target_image.shape
-        layers = 1  # 2 layers total for inpaint (layers+1)
+        # Standard 4D empty latent — EXACTLY like the video's EmptyLatentImage.
+        # fix_empty_latent_channels() in _common_sample auto-converts this to
+        # the right format for Qwen Edit (16ch, 5D, correct spatial ratio).
+        # We must NOT manually create a 5D latent because that bypasses the
+        # critical spatial downscale ratio adjustment.
         latent = torch.zeros(
-            [1, 16, layers + 1, h // 8, w // 8],
+            [1, 4, h_orig // 8, w_orig // 8],
             device=self.device
         )
-        latent_dict = {"samples": latent}
+        latent_dict = {"samples": latent, "downscale_ratio_spacial": 8}
+        logger.info(f"[InpaintSampler] Empty latent 4ch {w_orig // 8}x{h_orig // 8} "
+                     f"(body is {w_orig}x{h_orig}, will auto-convert for Qwen)")
 
-        # Apply mask to layered latent: [1, 1, layers+1, H//8, W//8]
-        # FatMexHeadMask can return [B, H, W] (multiple masks); combine to single [1, H, W]
-        if mask.dim() == 3:
-            mask = mask.max(dim=0, keepdim=True)[0]
-        # Ensure [1, 1, H, W] for interpolate (N, C, H, W)
-        while mask.dim() < 4:
-            mask = mask.unsqueeze(0)
-        mask_4d = mask.to(self.device)
-        mask_resized = torch.nn.functional.interpolate(
-            mask_4d,
-            size=(h // 8, w // 8),
-            mode='nearest'
-        )
-        mask_layered = mask_resized.repeat(1, 1, layers + 1, 1, 1)
-        latent_dict["noise_mask"] = mask_layered
-
-        # Sample (inpaint within masked area)
+        # Generate from scratch — no noise_mask, denoise 1.0.
         sampled = _common_sample(
             model, seed, actual_steps, actual_cfg,
             actual_sampler, actual_scheduler,
             positive, negative, latent_dict,
-            denoise=denoise
+            denoise=1.0
         )
 
-        images = _vae_decode(vae, sampled)
-        return (images, sampled)
+        edited = _vae_decode(vae, sampled)
+        logger.info(f"[InpaintSampler] Generated {edited.shape}")
+
+        # Return raw Qwen Edit output — no compositing.
+        # Qwen Edit preserves the body/background through its own conditioning.
+        # The mask is not needed here; the next pipeline stage (detail pass)
+        # handles any remaining cleanup.
+        return (edited, sampled)
 
 
 SAMPLER_CLASS_MAPPINGS = {
