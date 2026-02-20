@@ -584,12 +584,10 @@ class FatMexInpaintSampler:
         )
 
         edited = _vae_decode(vae, sampled)
+        # Only keep the last image — earlier ones are intermediate layer reconstructions
+        edited = edited[-1:]
         logger.info(f"[InpaintSampler] Generated {edited.shape}")
 
-        # Return raw Qwen Edit output — no compositing.
-        # Qwen Edit preserves the body/background through its own conditioning.
-        # The mask is not needed here; the next pipeline stage (detail pass)
-        # handles any remaining cleanup.
         return (edited, sampled)
 
 

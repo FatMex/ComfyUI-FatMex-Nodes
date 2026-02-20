@@ -96,33 +96,6 @@ MODEL_PRESETS = {
         "cfg": 0.15,
         "sage_attention": True,
     },
-    "Qwen Rapid AIO": {
-        "unet": None,
-        "unet_source": "checkpoints",
-        "checkpoint": "Qwen-Rapid-AIO-NSFW-v18.safetensors",
-        "clip": None,
-        "clip_type": None,
-        "vae": None,
-        "weight_dtype": "default",
-        "sampler": "euler",
-        "scheduler": "simple",
-        "steps": 6,
-        "cfg": 1.0,
-        "sage_attention": True,
-    },
-    "Qwen Image 2.0 (Placeholder)": {
-        "unet": "qwen_image_2.0_fp8.safetensors",
-        "unet_source": "diffusion_models",
-        "clip": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
-        "clip_type": "qwen_image",
-        "vae": "qwen_image_vae.safetensors",
-        "weight_dtype": "default",
-        "sampler": "euler",
-        "scheduler": "beta",
-        "steps": 8,
-        "cfg": 1.0,
-        "sage_attention": False,
-    },
 }
 
 PRESET_NAMES = list(MODEL_PRESETS.keys())
