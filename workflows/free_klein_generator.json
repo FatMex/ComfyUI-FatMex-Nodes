@@ -1,5 +1,5 @@
 {
-  "last_node_id": 4,
+  "last_node_id": 5,
   "last_link_id": 4,
   "nodes": [
     {
@@ -47,6 +47,30 @@
       "inputs": [
         {"name": "images", "type": "IMAGE", "link": 4}
       ]
+    },
+    {
+      "id": 5,
+      "type": "CR Prompt List",
+      "pos": [100, 700],
+      "size": [400, 300],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {"name": "prompt", "type": "STRING", "slot_index": 0, "links": []},
+        {"name": "body_text", "type": "STRING", "slot_index": 1, "links": []},
+        {"name": "show_help", "type": "STRING", "slot_index": 2, "links": []}
+      ],
+      "title": "Batch Prompts (connect to sampler)",
+      "properties": {"Node name for S&R": "CR Prompt List"},
+      "widgets_values": [
+        "",
+        "woman doing yoga on the beach, golden hour, professional photo\nwoman in a red dress at a fancy restaurant, candlelit, portrait\nwoman in casual streetwear, urban city background, editorial style\nman in a suit, corporate headshot, studio lighting, professional\na cute golden retriever puppy in a field of flowers, soft light",
+        "",
+        0,
+        1000
+      ]
     }
   ],
   "links": [
@@ -60,6 +84,11 @@
       "title": "Fat Mex Klein Generator (FREE)",
       "bounding": [50, 100, 1450, 550],
       "color": "#2a363b"
+    },
+    {
+      "title": "Optional: Batch Mode — Connect prompt output to sampler's positive_prompt",
+      "bounding": [50, 650, 500, 400],
+      "color": "#3b2a2a"
     }
   ],
   "config": {},
@@ -67,8 +96,8 @@
     "ds": {"scale": 0.8, "offset": [0, 0]},
     "info": {
       "name": "Fat Mex Klein Generator",
-      "description": "Simple 3-node text-to-image workflow using Flux 2 Klein 9B. Just type a prompt and generate.",
-      "version": "1.0",
+      "description": "Simple 3-node text-to-image workflow using Flux 2 Klein 9B. Just type a prompt and generate. Optional CR Prompt List below for batch mode.",
+      "version": "1.1",
       "author": "Fat Mex",
       "tier": "free"
     }
