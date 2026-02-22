@@ -1,0 +1,15 @@
+[project]
+name = "comfyui-fatmex-nodes"
+version = "1.0.0"
+description = "All-in-one node pack for AI image generation. Collapses complex ComfyUI workflows into single nodes — Model Loader, Content Sampler, Reference Sampler, Image Edit, Inpaint, Head Mask, Upscaler, Face Swap, Prompt Batch, and more."
+license = { file = "LICENSE" }
+requires-python = ">= 3.10"
+dependencies = ["numpy", "scipy", "Pillow", "insightface", "onnxruntime-gpu"]
+
+[project.urls]
+Repository = "https://github.com/FatMex/ComfyUI-FatMex-Nodes"
+
+[tool.comfy]
+PublisherId = "fatmex"
+DisplayName = "Fat Mex Nodes"
+Icon = ""
